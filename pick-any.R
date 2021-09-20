@@ -10,21 +10,21 @@ sampling_functions <- tribble(
   ~distribution, ~sample_fun,
   "uniform", runif,
   "normal", rnorm,
-  "pareto1", function(n) rpareto(n, 1),
+  "pareto1.16", function(n) rpareto(n, 1.16),
   "pareto2", function(n) rpareto(n, 2),
-  "pareto3", function(n) rpareto(n, 3)
+  "pareto5", function(n) rpareto(n, 5)
 )
 
 results <- crossing(
-  M = c(1, 5, 10, 25, 50, 75, 100, 200, 500, 1000),
+  N = c(1:100, 200, 500, 1000),
   distribution = sampling_functions$distribution,
   iter = 1:1e3
 ) %>%
   left_join(sampling_functions, by = "distribution") %>%
-  mutate(max_x = map2_dbl(sample_fun, M, ~ max(do.call(.x, list(.y)))))
+  mutate(max_x = map2_dbl(sample_fun, N, ~ max(do.call(.x, list(.y)))))
 
 summary <- results %>%
-  group_by(M, distribution) %>%
+  group_by(N, distribution) %>%
   summarize(
     mean_max_x = mean(max_x),
     median_max_x = median(max_x),
@@ -32,20 +32,26 @@ summary <- results %>%
   ) %>%
   pivot_longer(ends_with("max_x"))
 
-summary %>%
-  ggplot(aes(M, value, color = name)) +
-  facet_wrap(vars(distribution), scales = "free") +
-  geom_line()
+max_reward <- function(f, x0) {
+  obj <- function(x) f(x) - f(x0) / x0 * x
+  optimize(obj, c(0, x0), maximum = TRUE)$maximum
+}
+
+curves <- summary %>%
+  nest(data = c(N, value)) %>%
+  mutate(fun = map(data, ~ approxfun(.$N, .$value))) %>%
+  crossing(x0 = c(10, 100, 1000)) %>%
+  mutate(
+    fit = map2_dbl(fun, x0, max_reward)
+  )
+
+curves %>%
+  select(distribution, name, x0, fit) %>%
+  pivot_wider(names_from = x0, values_from = fit) %>%
+  arrange(name) %>%
+  print(n = Inf)
 
 summary %>%
-  group_by(distribution, name) %>%
-  mutate(
-    relative_to_10 = value / value[M == 10],
-    relative_to_100 = value / value[M == 100]
-  ) %>%
-  ungroup() %>%
-  select(M, distribution, metric = name, starts_with("relative_to")) %>%
-  pivot_longer(starts_with("relative_to"), names_to = "relative_to") %>%
-  ggplot(aes(M, value, color = metric, linetype = relative_to)) +
+  ggplot(aes(N, value, color = name)) +
   facet_wrap(vars(distribution), scales = "free") +
   geom_line()
