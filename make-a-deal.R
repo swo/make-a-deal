@@ -2,39 +2,16 @@
 
 library(tidyverse)
 
-dpareto <- function(x, shape, scale = 1) {
-  shape * scale ** shape / x ** (shape + 1)
-}
-
-qpareto <- function(q, shape, scale = 1) {
-  scale * (1 - q) ** -(1 / shape)
-}
-
 rpareto <- function(n, shape, scale = 1) {
-  scale * runif(n) ** (1 / shape)
+  scale / (runif(n) ** (1 / shape))
 }
-
-tibble(
-  x = seq(1, 100, length.out = 100),
-  y = dpareto(x, 0.01)
-) %>%
-  ggplot(aes(x, y)) +
-  geom_line()
-
-qpareto(c(0.8, 0.9), 1)
-scales::scientific(qpareto(c(0.8, 0.9), 0.1))
-qpareto(c(0.8, 0.9), 0.01)
-
-stop("OK")
 
 sampling_functions <- tribble(
   ~distribution, ~sample_fun,
   "linear", function(n) sample(1:n),
   "normal", rnorm,
-  "pareto3", function(n) rpareto(n, 3),
+  "pareto5", function(n) rpareto(n, 5),
   "pareto1", function(n) rpareto(n, 1),
-  "pareto0.1", function(n) rpareto(n, 0.1),
-  "pareto0.01", function(n) rpareto(n, 0.01)
 )
 
 simulate <- function(N, M, sample_fun) {

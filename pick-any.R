@@ -3,15 +3,15 @@
 library(tidyverse)
 
 rpareto <- function(n, shape, scale = 1) {
-  scale * runif(n) ** (1 / shape)
+  scale / (runif(n) ** (1 / shape))
 }
 
 sampling_functions <- tribble(
   ~distribution, ~sample_fun,
   "uniform", runif,
   "normal", rnorm,
-  "pareto0.1", partial(rpareto, shape = 0.1),
   "pareto1", function(n) rpareto(n, 1),
+  "pareto2", function(n) rpareto(n, 2),
   "pareto3", function(n) rpareto(n, 3)
 )
 
